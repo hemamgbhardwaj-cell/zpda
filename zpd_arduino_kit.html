@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZPD Activity Mapping — Arduino Uno Kit (L1 + L2)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --ink: #1a1a1a;
+    --paper: #f5f2eb;
+    --rule: #d0ccc0;
+    --in-zone: #0d5c4a;
+    --in-zone-bg: #e8f5f1;
+    --in-zone-border: #9fd4c8;
+    --below: #8a5a00;
+    --below-bg: #fef6e4;
+    --below-border: #f0c870;
+    --above: #8a2a1a;
+    --above-bg: #fdf0ee;
+    --above-border: #f0b0a0;
+    --basic: #2a5a2a;
+    --basic-bg: #eaf5ea;
+    --intermediate: #7a3a00;
+    --intermediate-bg: #fff3e8;
+    --advanced: #1a3a7a;
+    --advanced-bg: #e8eef8;
+    --l1-accent: #3a5a3a;
+    --l2-accent: #1a3a6a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: #e0ddd5;
+    color: var(--ink);
+    padding: 20px;
+  }
+
+  .doc {
+    max-width: 1140px;
+    margin: 0 auto;
+    background: var(--paper);
+  }
+
+  /* HEADER */
+  .header {
+    padding: 40px 48px 32px;
+    border-bottom: 3px solid var(--ink);
+  }
+
+  .header-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 12px;
+  }
+
+  .header-title {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+
+  .header-sub {
+    font-size: 14px;
+    color: #666;
+    font-weight: 300;
+    margin-bottom: 28px;
+  }
+
+  .zpd-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--rule);
+  }
+
+  .zpd-cell {
+    padding: 12px 16px;
+    border-right: 1px solid var(--rule);
+  }
+  .zpd-cell:last-child { border-right: none; }
+
+  .zpd-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  .zpd-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .zpd-desc {
+    font-size: 11px;
+    color: #666;
+    line-height: 1.4;
+  }
+
+  /* STATS */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    border-top: 1px solid var(--rule);
+    border-bottom: 3px solid var(--ink);
+  }
+
+  .stat {
+    padding: 14px 8px;
+    border-right: 1px solid var(--rule);
+    text-align: center;
+  }
+  .stat:last-child { border-right: none; }
+
+  .stat-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    color: #888;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+  }
+
+  /* FILTER BAR */
+  .filter-bar {
+    padding: 12px 48px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    border-bottom: 1px solid var(--rule);
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #888;
+    margin-right: 4px;
+  }
+
+  .filter-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    padding: 5px 11px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    cursor: pointer;
+    color: #666;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .filter-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--rule);
+    margin: 0 2px;
+  }
+
+  /* LEVEL DIVIDER */
+  .level-divider {
+    padding: 12px 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 2px solid var(--ink);
+    border-top: 2px solid var(--ink);
+  }
+
+  .level-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    color: var(--paper);
+  }
+
+  .level-badge.l1 { background: var(--l1-accent); }
+  .level-badge.l2 { background: var(--l2-accent); }
+
+  .level-desc {
+    font-size: 12px;
+    color: #555;
+    flex: 1;
+  }
+
+  .level-stats {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: #888;
+    letter-spacing: 0.5px;
+  }
+
+  /* PHASE HEADERS */
+  .phase-header {
+    padding: 10px 48px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--rule);
+    border-top: 2px solid var(--ink);
+  }
+
+  .phase-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+  }
+
+  .phase-desc {
+    font-size: 12px;
+    color: #666;
+    flex: 1;
+  }
+
+  .phase-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #aaa;
+  }
+
+  /* TABLE HEADER */
+  .table-header {
+    display: grid;
+    grid-template-columns: 52px 190px 90px 1fr 1fr 1fr 110px;
+    background: var(--ink);
+    color: var(--paper);
+    border-top: 1px solid var(--rule);
+  }
+
+  .th-cell {
+    padding: 10px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #aaa;
+    border-right: 1px solid #333;
+  }
+  .th-cell:first-child { text-align: center; }
+  .th-cell:last-child { border-right: none; }
+
+  /* ACTIVITY ROWS */
+  .activity {
+    display: grid;
+    grid-template-columns: 52px 190px 90px 1fr 1fr 1fr 110px;
+    border-bottom: 1px solid var(--rule);
+    align-items: stretch;
+    transition: background 0.1s;
+  }
+
+  .activity:hover { background: #f0ece0; }
+  .activity.hidden { display: none; }
+
+  .act-num {
+    padding: 14px 0;
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: #aaa;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .act-name {
+    padding: 14px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    line-height: 1.3;
+  }
+
+  .act-diff {
+    padding: 14px 10px;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .diff-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 2px;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .diff-basic { background: var(--basic-bg); color: var(--basic); }
+  .diff-intermediate { background: var(--intermediate-bg); color: var(--intermediate); }
+  .diff-advanced { background: var(--advanced-bg); color: var(--advanced); }
+
+  .sensor-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7.5px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    background: #ebe8e0;
+    color: #777;
+    border-radius: 2px;
+    text-align: center;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .act-new, .act-reinforce, .act-repeat {
+    padding: 14px 14px;
+    font-size: 11px;
+    line-height: 1.45;
+    border-right: 1px solid var(--rule);
+    color: #444;
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .act-new { color: var(--in-zone); font-weight: 500; }
+  .act-reinforce { color: #555; }
+  .act-repeat { color: #aaa; font-style: italic; }
+
+  .act-zpd {
+    padding: 14px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .zpd-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    text-align: center;
+    line-height: 1.4;
+    border-radius: 2px;
+    width: 88px;
+  }
+
+  .zpd-in { background: var(--in-zone-bg); color: var(--in-zone); border: 1px solid var(--in-zone-border); }
+  .zpd-below { background: var(--below-bg); color: var(--below); border: 1px solid var(--below-border); }
+  .zpd-above { background: var(--above-bg); color: var(--above); border: 1px solid var(--above-border); }
+
+  /* CURVE */
+  .curve-section {
+    padding: 24px 48px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .curve-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 6px;
+  }
+
+  .curve-subtitle {
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 14px;
+  }
+
+  .curve-wrap {
+    position: relative;
+  }
+
+  .curve-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: #aaa;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .curve {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 60px;
+    margin-bottom: 4px;
+  }
+
+  .curve-bar {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    min-height: 8px;
+    position: relative;
+    cursor: default;
+  }
+
+  .bar-in { background: var(--in-zone-border); }
+  .bar-below { background: var(--below-border); }
+  .bar-above { background: var(--above-border); }
+  .bar-divider { flex: 0 0 3px; background: var(--ink); height: 60px; border-radius: 0; }
+
+  .curve-legend {
+    display: flex;
+    gap: 20px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .curve-legend span {
+    font-size: 11px;
+  }
+
+  /* INSIGHTS */
+  .insights {
+    padding: 32px 48px;
+    border-top: 3px solid var(--ink);
+    background: #f0ece0;
+  }
+
+  .insights-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 20px;
+  }
+
+  .insight-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .insight-card {
+    background: var(--paper);
+    padding: 18px 20px;
+    border-left: 3px solid var(--ink);
+  }
+
+  .insight-card.green { border-left-color: var(--in-zone); }
+  .insight-card.amber { border-left-color: var(--below); }
+  .insight-card.red { border-left-color: var(--above); }
+  .insight-card.blue { border-left-color: var(--l2-accent); }
+
+  .insight-head {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    color: #444;
+  }
+
+  .insight-body {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #555;
+  }
+
+  .insight-body strong {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .diff-basic-tag { background: var(--basic-bg); color: var(--basic); }
+  .diff-intermediate-tag { background: var(--intermediate-bg); color: var(--intermediate); }
+  .diff-advanced-tag { background: var(--advanced-bg); color: var(--advanced); }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-label">Butterfly Edufields · Arduino Uno Kit · ZPD Analysis · Level 1 + Level 2</div>
+    <div class="header-title">Zone of Proximal Development Mapping</div>
+    <div class="header-sub">All 50 activities across both kit levels mapped against Vygotsky's ZPD framework. Each activity rated: In Zone / Below Zone / Above Zone.</div>
+    <div class="zpd-bar">
+      <div class="zpd-cell">
+        <div class="zpd-label"><span class="zpd-dot" style="background:#0d5c4a"></span>In the zone</div>
+        <div class="zpd-desc">New concept introduced on familiar foundation. Child is stretched but not lost. Learning happens here.</div>
+      </div>
+      <div class="zpd-cell">
+        <div class="zpd-label"><span class="zpd-dot" style="background:#e0a020"></span>Below the zone</div>
+        <div class="zpd-desc">No new concept. Output swap or minor variation. Child is executing, not thinking. Risk of boredom.</div>
+      </div>
+      <div class="zpd-cell" style="border-right:none">
+        <div class="zpd-label"><span class="zpd-dot" style="background:#c03020"></span>Above the zone</div>
+        <div class="zpd-desc">Too much new at once. Insufficient scaffolding. Child may become confused without direct support.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><span class="stat-num" style="color:var(--in-zone)">31</span><div class="stat-label">In the zone (total)</div></div>
+    <div class="stat"><span class="stat-num" style="color:var(--below)">18</span><div class="stat-label">Below zone (total)</div></div>
+    <div class="stat"><span class="stat-num" style="color:var(--above)">1</span><div class="stat-label">Above zone (total)</div></div>
+    <div class="stat"><span class="stat-num" style="color:var(--l1-accent)">12/25</span><div class="stat-label">L1 in zone (48%)</div></div>
+    <div class="stat"><span class="stat-num" style="color:var(--l2-accent)">19/25</span><div class="stat-label">L2 in zone (76%)</div></div>
+    <div class="stat"><span class="stat-num">12</span><div class="stat-label">New component types</div></div>
+    <div class="stat"><span class="stat-num" style="color:var(--below)">19–22</span><div class="stat-label">L1 plateau zone</div></div>
+    <div class="stat"><span class="stat-num" style="color:var(--l2-accent)">25</span><div class="stat-label">L2 peak: Gesture Robot</div></div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <span class="filter-label">Filter</span>
+    <button class="filter-btn active" onclick="filterActivities('all', this)">All 50</button>
+    <button class="filter-btn" onclick="filterActivities('l1', this)">Level 1 only</button>
+    <button class="filter-btn" onclick="filterActivities('l2', this)">Level 2 only</button>
+    <div class="filter-sep"></div>
+    <button class="filter-btn" onclick="filterActivities('in', this)">In zone</button>
+    <button class="filter-btn" onclick="filterActivities('below', this)">Below zone</button>
+    <button class="filter-btn" onclick="filterActivities('above', this)">Above zone</button>
+    <div class="filter-sep"></div>
+    <button class="filter-btn" onclick="filterActivities('basic', this)">Basic</button>
+    <button class="filter-btn" onclick="filterActivities('intermediate', this)">Intermediate</button>
+    <button class="filter-btn" onclick="filterActivities('advanced', this)">Advanced</button>
+  </div>
+
+  <!-- TABLE HEADER -->
+  <div class="table-header">
+    <div class="th-cell">#</div>
+    <div class="th-cell">Activity name</div>
+    <div class="th-cell">Level / Sensor</div>
+    <div class="th-cell">New concept introduced</div>
+    <div class="th-cell">Concept reinforced</div>
+    <div class="th-cell">Unnecessary repetition</div>
+    <div class="th-cell">ZPD status</div>
+  </div>
+
+  <!-- ====== LEVEL 1 ====== -->
+  <div class="level-divider" data-level="l1">
+    <span class="level-badge l1">Level 1</span>
+    <span class="level-desc">Stationary kit — 25 activities · Arduino Nano + m-block · Push button, Touch, Reed, Flame, LDR, IR, Sound sensors</span>
+    <span class="level-stats">12 in zone · 13 below · 0 above</span>
+  </div>
+
+  <!-- PHASE 1: PUSH BUTTON -->
+  <div class="phase-header">
+    <span class="phase-tag diff-basic-tag">Phase 1 — Push button sequence</span>
+    <span class="phase-desc">Activities 1–6 · Foundational input/output + coding concepts · Best-sequenced phase in Level 1</span>
+    <span class="phase-count">Acts 1–6</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="basic" data-level="l1">
+    <div class="act-num">01</div>
+    <div class="act-name">LED Blink Flash Light</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Push button</span></div>
+    <div class="act-new">Core concept: input → Arduino → output. Code is the brain. First time writing code that moves real hardware. Microcontroller as logic layer introduced.</div>
+    <div class="act-reinforce">—</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="basic" data-level="l1">
+    <div class="act-num">02</div>
+    <div class="act-name">Flash Laser</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Push button</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Button input · code upload loop</div>
+    <div class="act-repeat">LED replaced with laser. Identical logic, circuit, and code structure. No new concept introduced.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="basic" data-level="l1">
+    <div class="act-num">03</div>
+    <div class="act-name">Fan Rotation</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Push button</span></div>
+    <div class="act-new">Motor as new output type — mechanical motion vs light/sound. Physical world changes character. Polarity of motor connections introduced.</div>
+    <div class="act-reinforce">Button input · code upload · output wiring</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="basic" data-level="l1">
+    <div class="act-num">04</div>
+    <div class="act-name">Fan Anti-Clockwise</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Push button</span></div>
+    <div class="act-new">Polarity reversal changes motor direction — same hardware, swapping wire connections inverts rotation. First example of hardware logic rather than just code logic.</div>
+    <div class="act-reinforce">Motor output · button input</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="basic" data-level="l1">
+    <div class="act-num">05</div>
+    <div class="act-name">Morse Code Communication System</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Push button</span></div>
+    <div class="act-new">Code timing determines behaviour — button duration and delay values in code create meaning. First time code parameters change what the kit communicates, not just whether it fires.</div>
+    <div class="act-reinforce">Button input · buzzer output · code upload</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="basic" data-level="l1">
+    <div class="act-num">06</div>
+    <div class="act-name">Water Pump Timer Control</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Push button</span></div>
+    <div class="act-new">Motor driver introduced + timer-based automation. Pump runs for set duration without continued button press — first automated, self-terminating behaviour. Motor driver as power controller.</div>
+    <div class="act-reinforce">Button input · code timing concept</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <!-- PHASE 2: TOUCH SENSOR -->
+  <div class="phase-header">
+    <span class="phase-tag diff-basic-tag">Phase 2 — Touch sensor</span>
+    <span class="phase-desc">Activities 7–9 · New input type: capacitive touch · One genuine new concept, one creative, one filler</span>
+    <span class="phase-count">Acts 7–9</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="basic" data-level="l1">
+    <div class="act-num">07</div>
+    <div class="act-name">Touch Horn</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Touch sensor</span></div>
+    <div class="act-new">Touch sensor as new input type — capacitive detection, different physical gesture (skin contact vs mechanical press). New input paradigm.</div>
+    <div class="act-reinforce">Buzzer output · sensor-to-output logic</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="basic" data-level="l1">
+    <div class="act-num">08</div>
+    <div class="act-name">Piano Harmony</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Touch sensor</span></div>
+    <div class="act-new">Code frequency values determine musical notes — child can change the tune by editing code. First creative, expressive coding activity. Code as creative instrument.</div>
+    <div class="act-reinforce">Touch sensor · buzzer output</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="basic" data-level="l1">
+    <div class="act-num">09</div>
+    <div class="act-name">Touch Light</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Touch sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Touch sensor input</div>
+    <div class="act-repeat">Buzzer swapped for LED. Identical touch sensor logic, no new concept. Third touch activity with no new learning.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <!-- PHASE 3: REED SENSOR -->
+  <div class="phase-header">
+    <span class="phase-tag diff-basic-tag">Phase 3 — Reed sensor</span>
+    <span class="phase-desc">Activities 10–12 · New input type: magnetic detection · One genuine, two output swaps</span>
+    <span class="phase-count">Acts 10–12</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="basic" data-level="l1">
+    <div class="act-num">10</div>
+    <div class="act-name">Refrigerator Door Magnetic Switch</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Reed sensor</span></div>
+    <div class="act-new">Reed sensor — contactless magnetic detection. First sensor triggered without physical contact. Strong real-world context (fridge door) makes the concept legible.</div>
+    <div class="act-reinforce">LED output · sensor-to-output logic</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="basic" data-level="l1">
+    <div class="act-num">11</div>
+    <div class="act-name">Security Alarm</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Reed sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Reed sensor · magnetic detection</div>
+    <div class="act-repeat">LED swapped for buzzer. Same reed sensor, same logic. No new concept.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="basic" data-level="l1">
+    <div class="act-num">12</div>
+    <div class="act-name">Magnetic Laser Point</div>
+    <div class="act-diff"><span class="diff-tag diff-basic">Basic</span><span class="sensor-tag">Reed sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Reed sensor · laser output</div>
+    <div class="act-repeat">Third reed activity, third output swap. Laser activated by magnet. No new concept. Pattern overused.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <!-- PHASE 4: FLAME SENSOR -->
+  <div class="phase-header">
+    <span class="phase-tag diff-intermediate-tag">Phase 4 — Flame sensor</span>
+    <span class="phase-desc">Activities 13–15 · New input type: infrared wavelength detection · One genuine, two output swaps</span>
+    <span class="phase-count">Acts 13–15</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l1">
+    <div class="act-num">13</div>
+    <div class="act-name">Flame Extinguisher Alarm — Buzzer</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Flame sensor</span></div>
+    <div class="act-new">Flame sensor — environmental sensing of light wavelength. Automatic response without human trigger. First fully autonomous sensor-response loop. Strong safety narrative.</div>
+    <div class="act-reinforce">Buzzer output · sensor logic</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">14</div>
+    <div class="act-name">Flame Extinguisher Light</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Flame sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Flame sensor · automatic response logic</div>
+    <div class="act-repeat">Buzzer swapped for LED. Same flame sensor, same logic. No new concept.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">15</div>
+    <div class="act-name">Flame Extinguisher Water Pump</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Flame sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Flame sensor · motor driver · water pump</div>
+    <div class="act-repeat">Water pump activated by flame sensor. Motor driver reuse from Act 6. No new concept added.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <!-- PHASE 5: LDR SENSOR -->
+  <div class="phase-header">
+    <span class="phase-tag diff-intermediate-tag">Phase 5 — LDR sensor</span>
+    <span class="phase-desc">Activities 16–17 · New input type: analog light sensing · One genuine, one output swap</span>
+    <span class="phase-count">Acts 16–17</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l1">
+    <div class="act-num">16</div>
+    <div class="act-name">Smart Street Light</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">LDR sensor</span></div>
+    <div class="act-new">LDR — analog/continuous sensing, threshold logic. First time sensor detects degree rather than binary presence/absence. Code reads a value not just an on/off state.</div>
+    <div class="act-reinforce">LED output · automatic response</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">17</div>
+    <div class="act-name">Automatic Morning Alarm</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">LDR sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">LDR threshold logic · buzzer output</div>
+    <div class="act-repeat">LED swapped for buzzer. LDR triggers buzzer when light rises. Same threshold logic as Act 16. No new concept.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <!-- PHASE 6: IR SENSOR — PLATEAU -->
+  <div class="phase-header">
+    <span class="phase-tag diff-intermediate-tag">Phase 6 — IR sensor [PLATEAU ZONE]</span>
+    <span class="phase-desc">Activities 18–22 · 4 consecutive below-zone after act 18 · Output-swap collapse · Engagement risk highest here</span>
+    <span class="phase-count">Acts 18–22</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l1">
+    <div class="act-num">18</div>
+    <div class="act-name">Contactless Door Bell</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">IR sensor</span></div>
+    <div class="act-new">IR sensor — proximity/obstacle detection via infrared reflection. New detection principle vs all previous sensors. First sensor that works without contact or light threshold.</div>
+    <div class="act-reinforce">Buzzer output · automatic sensor-response</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">19</div>
+    <div class="act-name">Human / Motion Detection</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">IR sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">IR sensor · proximity detection</div>
+    <div class="act-repeat">Buzzer swapped for LED. Identical IR logic. Plateau begins. Acts 19–22 are four consecutive output swaps with no new concept.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">20</div>
+    <div class="act-name">Smart Fan</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">IR sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">IR sensor · motor output</div>
+    <div class="act-repeat">IR sensor triggers motor + fan. Third consecutive IR output swap. Plateau continues.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">21</div>
+    <div class="act-name">Smart Water Pump</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">IR sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">IR sensor · water pump + motor driver</div>
+    <div class="act-repeat">Water pump replaces fan. Same logic as Act 20, Act 19, Act 18. Fourth consecutive IR output swap.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">22</div>
+    <div class="act-name">Vacuum Cleaner</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">IR sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">IR sensor · motor suction logic</div>
+    <div class="act-repeat">Motor fan repurposed as vacuum. Narrative is creative but concept is identical to Acts 19–21. Fifth consecutive IR activity.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <!-- PHASE 7: SOUND SENSOR -->
+  <div class="phase-header">
+    <span class="phase-tag diff-intermediate-tag">Phase 7 — Sound sensor [WEAK CLOSER]</span>
+    <span class="phase-desc">Activities 23–25 · New sensor, then two output swaps · Kit ends on filler — missed synthesis opportunity</span>
+    <span class="phase-count">Acts 23–25</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l1">
+    <div class="act-num">23</div>
+    <div class="act-name">Clap-Activated LED Lights</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Sound sensor</span></div>
+    <div class="act-new">Sound sensor — acoustic amplitude detection. New physical phenomenon as input trigger. Child's sound controls hardware for first time.</div>
+    <div class="act-reinforce">LED output · threshold-based response</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">24</div>
+    <div class="act-name">Clap-Activated Buzzer</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Sound sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Sound sensor · buzzer output</div>
+    <div class="act-repeat">LED swapped for buzzer. Identical clap logic. Poor second-to-last activity — filler before final activity.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l1">
+    <div class="act-num">25</div>
+    <div class="act-name">Clap-Activated Fan</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Sound sensor</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Sound sensor · motor output</div>
+    <div class="act-repeat">Fan activated by clap. Third sound output swap. Kit ends on its weakest activity. Missed opportunity for a synthesis closer.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <!-- ====== LEVEL 2 ====== -->
+  <div class="level-divider" data-level="l2">
+    <span class="level-badge l2">Level 2</span>
+    <span class="level-desc">Assembly kit — 25 activities · Ultrasonic, DHT11, Servo, OLED, Bluetooth HC-05, BO Motors · Robot cars + Smart Home</span>
+    <span class="level-stats">19 in zone · 5 below · 1 above</span>
+  </div>
+
+  <!-- PHASE 8: ULTRASONIC BLOCK -->
+  <div class="phase-header">
+    <span class="phase-tag diff-intermediate-tag">Phase 8 — Ultrasonic sensor block</span>
+    <span class="phase-desc">Activities 1–6 · 5 of 6 in zone · Best opening sequence in either kit · OLED + multi-output concepts</span>
+    <span class="phase-count">Acts 1–6</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l2">
+    <div class="act-num">L2·01</div>
+    <div class="act-name">Tollgate Arm</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Ultrasonic + Servo</span></div>
+    <div class="act-new">Two new concepts simultaneously: Ultrasonic sensor (distance measurement, 4-pin echo/trig protocol) + Servo motor (position control, not binary on/off). Real-world context (tollgate) makes the complexity legible.</div>
+    <div class="act-reinforce">—</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="intermediate" data-level="l2">
+    <div class="act-num">L2·02</div>
+    <div class="act-name">Blind Sensicoat</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Ultrasonic</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Ultrasonic distance sensing · proximity threshold</div>
+    <div class="act-repeat">Servo swapped for buzzer. Same ultrasonic proximity logic. Assistive tech framing is emotionally fresh but circuit concept is identical to Act 1.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l2">
+    <div class="act-num">L2·03</div>
+    <div class="act-name">Parking Assistance System</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Ultrasonic</span></div>
+    <div class="act-new">Two outputs from one sensor simultaneously — buzzer + LED both triggered by same ultrasonic reading. First multi-output logic structure. One sensor, two concurrent responses.</div>
+    <div class="act-reinforce">Ultrasonic threshold detection · buzzer · LED</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l2">
+    <div class="act-num">L2·04</div>
+    <div class="act-name">Guess My Distance</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Ultrasonic + OLED</span></div>
+    <div class="act-new">OLED display as new output type — sensor value shown as readable number, not just triggering. First "read and display" activity. Changes relationship to sensor: data becomes visible, not just functional.</div>
+    <div class="act-reinforce">Ultrasonic distance measurement</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l2">
+    <div class="act-num">L2·05</div>
+    <div class="act-name">Laser Security Alarm</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Laser + LDR</span></div>
+    <div class="act-new">Two sensors working as a system — laser beam aimed at LDR, breaking the beam triggers alarm. First cross-sensor logic: output of one component becomes the environment the other reads. Strong synthesis activity.</div>
+    <div class="act-reinforce">LDR light sensing · buzzer · laser output</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="intermediate" data-level="l2">
+    <div class="act-num">L2·06</div>
+    <div class="act-name">Smart Fire Bot</div>
+    <div class="act-diff"><span class="diff-tag diff-intermediate">Intermediate</span><span class="sensor-tag">Flame sensor</span></div>
+    <div class="act-new">Three outputs from one sensor simultaneously — buzzer + LED + water pump. Extends multi-output concept from Act 3. Complex wiring, but sensor already known. Progressive scaling of output count.</div>
+    <div class="act-reinforce">Flame detection · multi-output logic · motor driver</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <!-- PHASE 9: ROBOT CAR PLATFORM -->
+  <div class="phase-header">
+    <span class="phase-tag diff-advanced-tag">Phase 9 — Robot car platform [ONE ABOVE-ZONE JUMP]</span>
+    <span class="phase-desc">Activities 7–15 · Stationary to mobile transition at Act 7 · Act 7 is above zone (car + BO motors + motor driver all at once)</span>
+    <span class="phase-count">Acts 7–15</span>
+  </div>
+
+  <div class="activity" data-zpd="above" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·07</div>
+    <div class="act-name">Magneto Bot</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Reed sensor</span></div>
+    <div class="act-new">Car chassis + BO motors (new motor type) + external motor driver all introduced simultaneously. Completely new physical platform, new motor type, new directional movement logic.</div>
+    <div class="act-reinforce">Reed sensor (known from L1)</div>
+    <div class="act-repeat">Too much new at once: chassis assembly + BO motors + motor driver + movement logic all in one step. Same above-zone problem as 40-in-1 Act 28 (Pet Me Robot).</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-above">⚠ Above Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·08</div>
+    <div class="act-name">Fire Chaser</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Flame sensor</span></div>
+    <div class="act-new">Sensor-directed robot movement — robot moves toward or away from flame stimulus. Logic now governs physical direction, not just on/off. Robot as responsive physical actor.</div>
+    <div class="act-reinforce">Car platform · BO motors · motor driver · flame sensor</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·09</div>
+    <div class="act-name">Light Following Robot</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">LDR × 2</span></div>
+    <div class="act-new">Comparative sensor logic — two LDRs compared, robot steers toward brighter side. First differential/comparison logic: the difference between two readings determines direction, not a single threshold.</div>
+    <div class="act-reinforce">LDR sensing · car movement · motor driver</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·10</div>
+    <div class="act-name">Light Avoidance Robot</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">LDR × 2</span></div>
+    <div class="act-new">Reverse logic on comparative sensor — same hardware, inverted code produces opposite steering behaviour. NOT gate applied to directional comparative logic. Meaningful extension of Act 9.</div>
+    <div class="act-reinforce">Comparative LDR logic · car steering</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·11</div>
+    <div class="act-name">Pet Me Robot</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">IR × 2</span></div>
+    <div class="act-new">Dual IR sensor placement creates robot social behaviour — facing outward, robot follows when approached. Sensor placement + dual-sensor logic combined with strong narrative identity ("pet-like").</div>
+    <div class="act-reinforce">Dual sensor logic · car platform · IR proximity</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·12</div>
+    <div class="act-name">Obstacle Avoidance Robot Car</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">IR × 2</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Dual IR · car steering logic</div>
+    <div class="act-repeat">Same dual IR + car platform logic as Act 11. Different narrative (avoidance vs following) but identical circuit and code structure. No new concept.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·13</div>
+    <div class="act-name">Line Following Robot</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">IR × 2 (downward)</span></div>
+    <div class="act-new">Sensor orientation changes detection type — IR facing down detects surface contrast (line vs floor), not proximity to objects. Same sensor, different placement = entirely new capability. Physical placement as code.</div>
+    <div class="act-reinforce">Dual IR · differential steering logic</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·14</div>
+    <div class="act-name">Self-Driving Car</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Ultrasonic</span></div>
+    <div class="act-new">Distance measurement drives autonomous navigation — robot steers around obstacles based on measured distance value. Synthesis of ultrasonic knowledge + car platform. Fully autonomous behaviour.</div>
+    <div class="act-reinforce">Ultrasonic sensing · car platform · motor driver</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·15</div>
+    <div class="act-name">Noisy Navigator</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Sound sensor</span></div>
+    <div class="act-new">Sound as robot start/stop command — clap triggers movement. New input type in car context. Child's voice/sound commands hardware. New human-machine interaction paradigm on the car.</div>
+    <div class="act-reinforce">Sound detection · car platform</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <!-- PHASE 10: BLUETOOTH + SMART HOME -->
+  <div class="phase-header">
+    <span class="phase-tag diff-advanced-tag">Phase 10 — Bluetooth + Smart Home</span>
+    <span class="phase-desc">Activities 16–22 · DHT11 + Bluetooth HC-05 introduced · Acts 18–20 are output swaps · Acts 21–22 are strong synthesis</span>
+    <span class="phase-count">Acts 16–22</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·16</div>
+    <div class="act-name">Weather Station</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">DHT11 + OLED</span></div>
+    <div class="act-new">DHT11 sensor — two values from one sensor simultaneously (temperature + humidity). Environmental data monitoring. Sensor outputs a compound reading. Real-world science measurement context.</div>
+    <div class="act-reinforce">OLED display · sensor-to-display pipeline</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·17</div>
+    <div class="act-name">Smart Glow</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Bluetooth HC-05</span></div>
+    <div class="act-new">Bluetooth module (HC-05) — wireless control from phone app. Completely new paradigm: child's phone replaces physical sensor. Input now travels through air, not wire. No sensor needed — the phone is the input.</div>
+    <div class="act-reinforce">LED output · on/off control logic</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·18</div>
+    <div class="act-name">Smart Buzz</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Bluetooth HC-05</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Bluetooth module · wireless command</div>
+    <div class="act-repeat">LED swapped for buzzer. Same Bluetooth on/off logic. Output swap plateau begins in Bluetooth section.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·19</div>
+    <div class="act-name">Smart Breeze</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Bluetooth HC-05</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Bluetooth control · motor output</div>
+    <div class="act-repeat">DC motor + fan via Bluetooth. Same wireless on/off logic as Acts 17–18. Third consecutive Bluetooth output swap.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="below" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·20</div>
+    <div class="act-name">Smart Flow</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Bluetooth HC-05</span></div>
+    <div class="act-new">—</div>
+    <div class="act-reinforce">Bluetooth control · water pump + motor driver</div>
+    <div class="act-repeat">Water pump controlled via Bluetooth. Same logic as Acts 17–19. Fourth consecutive Bluetooth output swap. Pattern over-milked.</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-below">Below Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·21</div>
+    <div class="act-name">Smart Home Basic</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Bluetooth HC-05</span></div>
+    <div class="act-new">Multi-device Bluetooth control — one app command orchestrates LED + fan + water pump simultaneously. Smart home systems thinking introduced: one signal, many responses. Integration concept.</div>
+    <div class="act-reinforce">Bluetooth · motor driver · multi-actuator wiring</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·22</div>
+    <div class="act-name">Smart Home Advanced</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">BT + DHT11 + OLED</span></div>
+    <div class="act-new">Full synthesis: Bluetooth control + DHT11 environmental sensing + OLED data display + multi-actuator output combined. Most complex wiring in either kit. Capstone of the smart home sequence.</div>
+    <div class="act-reinforce">All Level 2 concepts combined</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <!-- PHASE 11: BLUETOOTH ROBOT FINALE -->
+  <div class="phase-header">
+    <span class="phase-tag diff-advanced-tag">Phase 11 — Bluetooth robot finale [STRONGEST CLOSER]</span>
+    <span class="phase-desc">Activities 23–25 · All three in zone · Navigator, Voice, Gesture — best sequence ending in either kit</span>
+    <span class="phase-count">Acts 23–25</span>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·23</div>
+    <div class="act-name">Navigator Bot</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Bluetooth HC-05</span></div>
+    <div class="act-new">Human-in-the-loop robot control — child pilots robot in real time via app. Contrasts with all previous autonomous sensor-driven robots. Child becomes the sensor: the decider, not just the builder.</div>
+    <div class="act-reinforce">Car platform · motor driver · Bluetooth</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·24</div>
+    <div class="act-name">Voice Controlled Robot</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Voice via Bluetooth</span></div>
+    <div class="act-new">Voice commands as robot direction input — speech converted to directional code. Speech-to-hardware pipeline. Child's words move physical robot. Highest emotional payoff in either kit.</div>
+    <div class="act-reinforce">Bluetooth · car platform · motor direction logic</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <div class="activity" data-zpd="in" data-diff="advanced" data-level="l2">
+    <div class="act-num">L2·25</div>
+    <div class="act-name">Gesture Controlled Robot</div>
+    <div class="act-diff"><span class="diff-tag diff-advanced">Advanced</span><span class="sensor-tag">Gesture via Bluetooth</span></div>
+    <div class="act-new">Physical gesture as robot command via touch-sensitive ball — body movement maps to robot movement. Most embodied interaction in either kit. Child's physical gesture IS the code input. Strongest closer.</div>
+    <div class="act-reinforce">Bluetooth · car platform · directional logic</div>
+    <div class="act-repeat">—</div>
+    <div class="act-zpd"><span class="zpd-badge zpd-in">In Zone</span></div>
+  </div>
+
+  <!-- LEARNING CURVE -->
+  <div class="curve-section">
+    <div class="curve-title">Learning novelty curve — ZPD status across all 50 activities</div>
+    <div class="curve-subtitle">Green = in zone · Amber = below zone · Red = above zone · Divider = Level 1 → Level 2 boundary</div>
+    <div class="curve" id="curveViz"></div>
+    <div class="curve-legend">
+      <span style="color:var(--in-zone)">■ In zone — L1: 12 · L2: 19 · Total: 31</span>
+      <span style="color:var(--below)">■ Below zone — L1: 13 · L2: 5 · Total: 18</span>
+      <span style="color:var(--above)">■ Above zone — L1: 0 · L2: 1 · Total: 1</span>
+      <span style="color:#aaa;font-style:italic">L1 plateau: acts 19–22 + 24–25 · L2 plateau: acts 18–20 · Above zone: L2 act 07</span>
+    </div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="insights">
+    <div class="insights-title">Key design insights for Arduino Uno Kit redesign</div>
+    <div class="insight-grid">
+
+      <div class="insight-card red">
+        <div class="insight-head">⚠ Level 1 inherits the 40-in-1 output-swap problem</div>
+        <div class="insight-body">13 of 25 Level 1 activities are below the ZPD — 52% of the kit. Almost all because only the output component changes while sensor and logic stay identical. <strong>Every sensor block (reed, flame, IR, sound) ends with 2–4 consecutive output swaps with no new concept.</strong> The 40-in-1 had 38% below zone; Level 1 is worse at 52%. For a kit positioned as more advanced, this is a structural regression. Each sensor should have at most one follow-up activity — a synthesis, not a swap.</div>
+      </div>
+
+      <div class="insight-card red">
+        <div class="insight-head">⚠ Level 1 ends on its three weakest activities</div>
+        <div class="insight-body">Acts 23, 24, 25 (Clap LED → Clap Buzzer → Clap Fan) are three consecutive sound-sensor output swaps. <strong>A child's final memory of Level 1 is filler.</strong> This is the opposite of good experience design. The last activity should be the most memorable — the synthesis moment that makes the child feel like an author. A single "Design Your Own" challenge using any sensor from the kit would be a better closer than three output swaps.</div>
+      </div>
+
+      <div class="insight-card amber">
+        <div class="insight-head">▲ The Act L2·07 jump mirrors the 40-in-1 Act 28 problem</div>
+        <div class="insight-body">The transition from stationary activities to the robot car at Level 2 Act 07 (Magneto Bot) introduces car chassis, BO motors, external motor driver, and directional movement logic all simultaneously. <strong>This is the same above-zone structural failure as Act 28 of the 40-in-1.</strong> The fix is identical: insert a stationary bridge activity that introduces BO motors + motor driver before attaching them to a car. One new thing at a time.</div>
+      </div>
+
+      <div class="insight-card amber">
+        <div class="insight-head">▲ Level 2 Bluetooth section has the same plateau (Acts 18–20)</div>
+        <div class="insight-body">After a strong Bluetooth introduction (Act 17 Smart Glow), three consecutive output swaps follow (Smart Buzz, Smart Breeze, Smart Flow). The concept is solid but milked. <strong>Acts 18–20 could be collapsed into one multi-output activity</strong> — "Bluetooth Smart Room" that controls LED + buzzer + fan from a single app, jump-starting the synthesis that doesn't arrive until Act 21. This would remove 2 filler activities and add one strong in-zone activity.</div>
+      </div>
+
+      <div class="insight-card green">
+        <div class="insight-head">✓ Level 2 is significantly better ZPD design than Level 1</div>
+        <div class="insight-body">Level 2 achieves 76% in-zone vs Level 1's 48%. <strong>The key structural difference: Level 2 introduces genuinely new concepts almost every activity</strong> — ultrasonic, servo, OLED, multi-output, cross-sensor logic, DHT11, Bluetooth, voice, gesture. Level 1 introduces 6 sensors in 25 activities; Level 2 introduces 6 new hardware types and 10 new conceptual patterns. The design brief for a new kit should use Level 2's introduction rate, not Level 1's.</div>
+      </div>
+
+      <div class="insight-card blue">
+        <div class="insight-head">◈ New finding: Level 2 hardware is a separate ecosystem</div>
+        <div class="insight-body">Level 2 introduces 6 components entirely absent from the 40-in-1 BOM and from Level 1: ultrasonic sensor (HC-SR04), DHT11, servo motor (SG90), OLED display, Bluetooth module (HC-05), and BO motors with external motor driver board. <strong>This requires a completely separate BOM costing exercise.</strong> The velcro-anomaly BOM we have covers the 40-in-1 (and Level 1 sensors) only. Level 2 is an independent hardware product that needs its own supplier verification, connector compatibility check, and cost floor calculation before any design work on it proceeds.</div>
+      </div>
+
+      <div class="insight-card green">
+        <div class="insight-head">✓ The strongest activities across both kits: the synthesis moments</div>
+        <div class="insight-body">The highest-ZPD activities share a pattern: they combine previously learned concepts in genuinely new configurations. L1 Act 5 (Morse — timing as meaning), L1 Act 8 (Piano — code as creative instrument), L2 Act 5 (Laser Security — two sensors as one system), L2 Act 9 (Light Follower — comparative differential logic), L2 Act 22 (Smart Home Advanced — all systems combined), L2 Act 25 (Gesture Robot — body as code). <strong>These synthesis activities should be the design target for every 5th activity in a redesigned kit.</strong></div>
+      </div>
+
+      <div class="insight-card green">
+        <div class="insight-head">✓ Level 2 acts 23–25 are the best closer in either kit</div>
+        <div class="insight-body">Navigator Bot → Voice Controlled Robot → Gesture Controlled Robot is the strongest three-activity finale across all 90 activities (40-in-1 + 50 Arduino kit). <strong>Each introduces a new human-machine interaction paradigm</strong> — joystick app → voice → physical gesture. The child ends the kit feeling like they have direct physical power over hardware. This is the emotional design formula for the Arduino kit's final act: child's body = code input. It should also be the design aspiration for Level 1's closer.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const l1 = ['in','below','in','in','in','in','in','in','below','in','below','below','in','below','below','in','below','in','below','below','below','below','in','below','below'];
+const l2 = ['in','below','in','in','in','in','above','in','in','in','in','below','in','in','in','in','in','below','below','below','in','in','in','in','in'];
+const colors = {in:'#9fd4c8', below:'#f0c870', above:'#f0b0a0'};
+const heights = {in:60, below:18, above:40};
+const curve = document.getElementById('curveViz');
+
+l1.forEach((z, i) => {
+  const bar = document.createElement('div');
+  bar.className = 'curve-bar bar-' + z;
+  bar.style.height = heights[z] + 'px';
+  bar.title = 'L1 Act ' + (i+1) + ': ' + (z==='in'?'In Zone':z==='below'?'Below Zone':'Above Zone');
+  curve.appendChild(bar);
+});
+
+// Divider
+const div = document.createElement('div');
+div.className = 'curve-bar bar-divider';
+div.title = 'Level 1 → Level 2 boundary';
+curve.appendChild(div);
+
+l2.forEach((z, i) => {
+  const bar = document.createElement('div');
+  bar.className = 'curve-bar bar-' + z;
+  bar.style.height = heights[z] + 'px';
+  bar.title = 'L2 Act ' + (i+1) + ': ' + (z==='in'?'In Zone':z==='below'?'Below Zone':'Above Zone');
+  curve.appendChild(bar);
+});
+
+function filterActivities(filter, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.activity').forEach(act => {
+    const zpd = act.dataset.zpd;
+    const diff = act.dataset.diff;
+    const level = act.dataset.level;
+    let show = false;
+    if (filter === 'all') show = true;
+    else if (filter === 'l1' && level === 'l1') show = true;
+    else if (filter === 'l2' && level === 'l2') show = true;
+    else if (filter === 'in' && zpd === 'in') show = true;
+    else if (filter === 'below' && zpd === 'below') show = true;
+    else if (filter === 'above' && zpd === 'above') show = true;
+    else if (filter === 'basic' && diff === 'basic') show = true;
+    else if (filter === 'intermediate' && diff === 'intermediate') show = true;
+    else if (filter === 'advanced' && diff === 'advanced') show = true;
+    act.classList.toggle('hidden', !show);
+  });
+}
+</script>
+</body>
+</html>
